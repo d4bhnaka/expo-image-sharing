@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
-import { StyleSheet, Text, View, TouchableOpacity, Image, Button } from 'react-native';
+import { StyleSheet, Text, View, TouchableOpacity, Image, Platform } from 'react-native';
 import logo from './assets/logo.png';
 import * as ImagePicker from 'expo-image-picker';
 import * as Sharing from 'expo-sharing';
+import uploadToAnonymousFilesAsync from 'anonymous-files';
 
 type SelectedImage = {
-  localUri: string
+  localUri: string;
+  remoteUri?: string | null;
 };
 
 export default function App() {
@@ -20,18 +22,23 @@ export default function App() {
     }
 
     let pickerResult = await ImagePicker.launchImageLibraryAsync();
-    console.log(pickerResult);
-
     if (pickerResult.cancelled === true) {
       return;
     }
 
-    setSelectedImage({ localUri: pickerResult.uri });
+    // プラットフォーム別に動作を制御
+    if (Platform.OS === 'web') {
+      let remoteUri = await uploadToAnonymousFilesAsync(pickerResult.uri);
+      setSelectedImage({ localUri: pickerResult.uri, remoteUri });
+    } else {
+      setSelectedImage({ localUri: pickerResult.uri, remoteUri: null });
+    }
+
   };
 
   let openShareDialogAsync = async () => {
     if (!(await Sharing.isAvailableAsync())) {
-      alert(`Uh oh, sharing isn't available on your platform`);
+      alert(`The image is available for sharing at: ${selectedImage?.remoteUri}`);
       return;
     }
     if (selectedImage === null) return;
